@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Deriv App</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            width: 400px;
+            margin: auto;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #ff444f;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background: #cc0000;
+        }
+
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        #balance {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Deriv Third-Party App</h2>
+
+    <input type="number" id="app_id" placeholder="Enter App ID"><br>
+    <input type="text" id="token" placeholder="Enter API Token"><br>
+
+    <button onclick="connectDeriv()">Connect</button>
+
+    <div id="status"></div>
+    <div id="balance"></div>
+</div>
+
+<script>
+    let connection;
+
+    function connectDeriv() {
+        const app_id = document.getElementById("app_id").value;
+        const token = document.getElementById("token").value;
+
+        if (!app_id || !token) {
+            alert("Please enter App ID and API Token");
+            return;
+        }
+
+        connection = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${app_id}`);
+
+        connection.onopen = function () {
+            document.getElementById("status").innerText = "Connected. Authorizing...";
+            
+            connection.send(JSON.stringify({
+                authorize: token
+            }));
+        };
+
+        connection.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+
+            if (data.error) {
+                document.getElementById("status").innerText = "Error: " + data.error.message;
+                return;
+            }
+
+            if (data.msg_type === "authorize") {
+                document.getElementById("status").innerText = "Authorized Successfully!";
+                
+                connection.send(JSON.stringify({
+                    balance: 1,
+                    subscribe: 1
+                }));
+            }
+
+            if (data.msg_type === "balance") {
+                document.getElementById("balance").innerText = 
+                    "Balance: " + data.balance.balance + " " + data.balance.currency;
+            }
+        };
+
+        connection.onerror = function () {
+            document.getElementById("status").innerText = "Connection error.";
+        };
+
+        connection.onclose = function () {
+            document.getElementById("status").innerText = "Disconnected.";
+        };
+    }
+</script>
+
+</body>
+</html>
